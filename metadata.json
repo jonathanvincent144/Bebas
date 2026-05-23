@@ -1,0 +1,10 @@
+{
+  "name": "ESP32 Relay & DHT11 Controller",
+  "description": "A clean, modern web interface to control 4-channel ESP32 relays and monitor DHT11 temperature & humidity in real-time, featuring voice commands and direct local IP control.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
