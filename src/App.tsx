@@ -8,7 +8,6 @@ import {
 import { RelayInfo, SensorReading, ControlMode, ConnectionState } from './types';
 import RealTimeCharts from './components/RealTimeCharts';
 import VoicePanel from './components/VoicePanel';
-import ArduinoCode from './components/ArduinoCode';
 
 // Pre-populate sensor data history with smooth curves
 const generateInitialHistory = (): SensorReading[] => {
@@ -58,7 +57,6 @@ export default function App() {
     return localStorage.getItem('esp32_ip') || '192.168.1.100';
   });
   const [inputIp, setInputIp] = useState<string>(espIp);
-  const [activeTab, setActiveTab ] = useState<'dashboard' | 'arduino'>('dashboard');
 
   // Relay configuration & custom name labels (Users can rename R1 to "Pompa Air", etc.)
   const [relays, setRelays] = useState<RelayInfo[]>(() => {
@@ -82,7 +80,6 @@ export default function App() {
   const [isVariasiRunning, setIsVariasiRunning] = useState<number | null>(null);
   const [variasiProgress, setVariasiProgress] = useState<number>(0);
   const [isPolling, setIsPolling] = useState<boolean>(false);
-  const [showInsecureNotice, setShowInsecureNotice ] = useState<boolean>(false);
   const [pingLatency, setPingLatency] = useState<number | null>(null);
 
   // Auto-save settings in localstorage when changed
@@ -168,7 +165,6 @@ export default function App() {
         message: `Terhubung langsung ke ESP32 pada jaringan lokal (Latency: ${latency}ms)`,
         latency
       });
-      setShowInsecureNotice(false);
 
       // Map incoming relays
       if (data.relays && Array.isArray(data.relays)) {
@@ -193,13 +189,9 @@ export default function App() {
     } catch (err: any) {
       console.warn("REST API polling failed:", err);
       setPingLatency(null);
-      // Browser secure request block recognition
-      if (window.location.protocol === 'https:') {
-        setShowInsecureNotice(true);
-      }
       setConnState({
         status: 'warning',
-        message: 'Gagal terkoneksi ke ESP32 lokal. Periksa kecocokan Wi-Fi & aktifkan izin Insecure Content.'
+        message: 'Gagal terkoneksi ke ESP32 lokal. Periksa kecocokan Wi-Fi.'
       });
     } finally {
       setIsPolling(false);
@@ -227,13 +219,9 @@ export default function App() {
           message: `Berhasil tersambung ke ESP32! IP diaktifkan. (Latency: ${latency}ms)`,
           latency
         });
-        setShowInsecureNotice(false);
       }
     } catch (err) {
       setPingLatency(null);
-      if (window.location.protocol === 'https:') {
-        setShowInsecureNotice(true);
-      }
       setConnState({
         status: 'disconnected',
         message: `Sambungan diblokir atau timeout. Periksa apakah IP ${inputIp} sudah benar, ESP32 menyala, dan tersambung di Wi-Fi yang sama.`
@@ -509,31 +497,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Tab Selector */}
-          <div className="flex bg-[#0B0C0E] p-1 rounded-xl border border-[#282C34]">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'dashboard' 
-                  ? 'bg-[#282C34] text-white border border-[#3A4150]' 
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              Kontrol Hub
-            </button>
-            <button
-              onClick={() => setActiveTab('arduino')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'arduino' 
-                  ? 'bg-[#282C34] text-white border border-[#3A4150]' 
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Code className="w-3.5 h-3.5" />
-              Upgrade ESP32
-            </button>
-          </div>
+
 
         </div>
       </header>
@@ -626,158 +590,12 @@ export default function App() {
 
         </div>
 
-        {/* Insecure Content Dynamic Warning */}
-        {showInsecureNotice && mode === 'direct' && (
-          <div className="max-w-7xl mx-auto mt-4 bg-rose-950/35 border border-rose-500/35 rounded-2xl p-5 text-rose-200 text-sm shadow-md" id="mixed-content-warning">
-            <div className="flex gap-3 items-start mb-3">
-              <AlertCircle className="w-6 h-6 text-rose-400 shrink-0" />
-              <div>
-                <h3 className="font-bold text-rose-300 font-mono text-sm uppercase tracking-wide">
-                  Penting: Mengaktifkan Izin "Insecure Content" di Browser Anda
-                </h3>
-                <p className="text-xs text-rose-400 mt-0.5">
-                  Karena Dashboard ini berjalan menggunakan protokol aman (<strong>HTTPS</strong>), browser Anda memblokir pemanggilan API langsung ke IP lokal ESP32 Anda (<strong>HTTP</strong>) karena aturan keamanan <em>Mixed Content</em>.
-                </p>
-              </div>
-            </div>
 
-            <div className="bg-[#0B0C0E]/60 border border-rose-500/10 rounded-xl p-4 mt-1.5 space-y-3 text-xs leading-relaxed">
-              <div className="text-yellow-400/95 font-medium">
-                ⚠️ <strong>Catatan Penting:</strong> Mengaktifkan pilihan <span className="font-bold text-white bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">"Local network"</span> di gelembung Chrome Anda saja <strong>belum cukup</strong> karena pembatasan Mixed Content HTTPS tetap memblokir koneksi HTTP langsung.
-              </div>
-
-              <p className="font-semibold text-white">Silakan ikuti instruksi 4 langkah mudah ini untuk membukanya:</p>
-              
-              <ol className="list-decimal pl-5 space-y-2 text-slate-300 font-mono text-[11px]">
-                <li>
-                  Pada jendela pop-up perizinan browser Anda (seperti di tangkapan layar Anda), klik tombol <span className="text-white font-bold underline">"Site settings"</span> (Pengaturan situs) di bagian paling bawah dengan ikon gerigi ⚙️.
-                </li>
-                <li>
-                  Sebuah tab baru akan terbuka di browser Anda yang menampilkan semua daftar izin khusus untuk domain situs ini.
-                </li>
-                <li>
-                  Gulir ke bawah hingga Anda menemukan bagian <span className="text-white font-bold">"Insecure content"</span> (Konten tidak aman), lalu ubah pilihannya dari <span className="text-rose-400 font-semibold bg-rose-500/10 px-1 py-0.5 rounded border border-rose-500/20">Block (default)</span> menjadi <span className="text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">Allow</span> (Izinkan).
-                </li>
-                <li>
-                  Kembali ke tab Dashboard ini, <strong>muat ulang halaman (Refresh / F5)</strong>, kemudian isi IP ESP32 Anda dan klik tombol <span className="text-emerald-400 font-bold underline cursor-pointer" onClick={() => pingESP32()}>"Hubungkan"</span> kembali.
-                </li>
-              </ol>
-
-              <div className="mt-2 text-[11px] text-slate-400">
-                Langkah detail & salinan kode Arduino pendukung yang optimal dapat Anda lihat di tab{" "}
-                <button 
-                  onClick={() => setActiveTab('arduino')}
-                  className="text-blue-400 hover:text-blue-300 underline font-semibold font-mono cursor-pointer"
-                >
-                  [Upgrade ESP32]
-                </button>{" "}
-                di bagian atas halaman.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Global Connection Diagnostic Panel */}
-        {mode === 'direct' && connState.status !== 'connected' && (
-          <div className="max-w-7xl mx-auto mt-4 bg-[#15171C]/90 border border-amber-500/30 rounded-2xl p-5 shadow-xl text-slate-300 animate-fade-in" id="diagnostic-checklist-panel">
-            <div className="flex gap-3 items-start mb-4">
-              <div className="p-2 bg-amber-500/15 text-amber-400 rounded-xl border border-amber-500/20 shrink-0">
-                <Info className="w-5 h-5 animate-pulse" />
-              </div>
-              <div>
-                <h3 className="font-bold text-white font-mono text-sm uppercase tracking-wide">
-                  📋 DIAGNOSIS MASALAH KONEKSI ESP32
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Meskipun Anda sudah menggunakan link non-HTTPS (Not Secure), browser Anda tetap tidak dapat melakukan ping ke IP <strong className="text-amber-400 font-mono">{inputIp}</strong>. Periksa 4 penyebab utama berikut:
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs mt-3">
-              {/* Item 1 */}
-              <div className="bg-[#0B0C0E]/60 border border-[#282C34] rounded-xl p-4 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider block mb-1">
-                    1. Apakah Alamat IP Anda Benar?
-                  </span>
-                  <p className="text-slate-400 text-xxs leading-relaxed">
-                    Alamat IP ESP32 diberikan secara otomatis oleh router Anda (DHCP) sehingga <strong>bisa berubah setiap kali ESP32 dinyalakan ulang</strong>.
-                  </p>
-                </div>
-                <div className="mt-2.5 p-2 bg-[#15171C] rounded-lg border border-[#282C34] text-[10px] text-slate-400 font-mono">
-                  💡 <strong>Cara Verifikasi:</strong> Hubungkan ESP32 ke laptop, buka <strong>Serial Monitor</strong> di Arduino IDE (Baudrate: <strong>115200</strong>), lalu tekan tombol <strong>EN/Rout/Reset</strong> di ESP32 Anda untuk melihat IP yang tercetak.
-                </div>
-              </div>
-
-              {/* Item 2 */}
-              <div className="bg-[#0B0C0E]/60 border border-[#282C34] rounded-xl p-4 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider block mb-1">
-                    2. Hambatan Isolasi Router WiFi Umum (IP 10.x.x.x)
-                  </span>
-                  <p className="text-slate-400 text-xxs leading-relaxed">
-                    Jika IP ESP32 Anda berada di rentang <strong className="text-rose-400 font-mono">{inputIp}</strong> (seperti <strong className="text-rose-400 font-mono">10.x.x.x</strong>), ini adalah khas jaringan Wi-Fi kosan, sekolah, kampus, atau kantor. Jaringan ini memiliki fitur keamanan <strong>"Client Isolation"</strong> yang memblokir semua komunikasi langsung antar-perangkat.
-                  </p>
-                </div>
-                <div className="mt-2.5 p-2 bg-amber-500/5 rounded-lg border border-amber-500/10 text-[10px] text-yellow-400/90 font-mono leading-relaxed">
-                  🔥 <strong>Solusi Terbaik:</strong> Aktifkan <strong>Hotspot Seluler/Tethering</strong> di HP Anda. Ganti SSID & Password Wi-Fi pada sketch Arduino ke Hotspot tersebut, lalu sambungkan laptop dan ESP32 ke Hotspot HP Anda yang sama.
-                </div>
-              </div>
-
-              {/* Item 3 */}
-              <div className="bg-[#0B0C0E]/60 border border-[#282C34] rounded-xl p-4 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider block mb-1">
-                    3. Apakah Kode Web Server Sudah Terpasang di ESP32?
-                  </span>
-                  <p className="text-slate-400 text-xxs leading-relaxed">
-                    Kode lama Anda hanya melayani bot Telegram. Agar Dashboard ini bisa mengontrol relay secara instan, ESP32 harus melayani permintaan API lokal.
-                  </p>
-                </div>
-                <div className="mt-2.5">
-                  <button
-                    onClick={() => setActiveTab('arduino')}
-                    className="w-full text-center text-xxs bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 py-1.5 rounded-lg transition-all font-semibold font-mono"
-                  >
-                    👉 Salin & Upload Sketch Terbaru Di Sini
-                  </button>
-                </div>
-              </div>
-
-              {/* Item 4 */}
-              <div className="bg-[#0B0C0E]/60 border border-[#282C34] rounded-xl p-4 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider block mb-1">
-                    4. Uji Ping API Langsung dari Browser Anda
-                  </span>
-                  <p className="text-slate-400 text-xxs leading-relaxed opacity-95">
-                    Mari kita cek apakah browser Anda bisa menjangkau server ESP32 secara langsung di luar aplikasi ini.
-                  </p>
-                </div>
-                <div className="mt-2.5 flex flex-col gap-2">
-                  <a
-                    href={`http://${inputIp}/api/status`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-center text-xxs bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 border border-emerald-500/20 py-1.5 rounded-lg transition-all font-mono font-bold"
-                  >
-                    🔗 Buka Tab Baru: http://{inputIp}/api/status
-                  </a>
-                  <p className="text-[10px] text-slate-500 font-mono leading-none text-center">
-                    (Jika muncul error "Site can't be reached", berarti Wi-Fi tidak sama atau diblokir isolasi)
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-        {activeTab === 'dashboard' ? (
-          <div className="space-y-8 animate-fade-in">
+        <div className="space-y-8 animate-fade-in">
                       {/* Upper Grid: 4-Channel Relays Control Grid */}
             <div id="controls-section">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
@@ -932,11 +750,6 @@ export default function App() {
             </div>
 
           </div>
-        ) : (
-          <div className="space-y-6 animate-fade-in">
-            <ArduinoCode />
-          </div>
-        )}
       </main>
 
       {/* Footer Disclaimer Credit */}

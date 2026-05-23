@@ -1,10 +1,4 @@
-import React, { useState } from 'react';
-import { Copy, Check, Download, Cpu, ShieldAlert, Sparkles, AlertTriangle } from 'lucide-react';
-
-export default function ArduinoCode() {
-  const [copied, setCopied] = useState(false);
-
-  const esp32Code = `/*
+/*
  * ESP32 Telegram Bot & REST API Web Server - Kontrol 4 Relay + Sensor DHT11
  * =========================================================================
  * Relay : Pin 5, 19, 18, 23
@@ -247,7 +241,6 @@ void handleControlRelay() {
     if (vNumber == 1) {
       int on[]  = {0, 1, 2, 3};
       int off[] = {3, 2, 1, 0};
-      // Jalankan variasi background tanpa delay Telegram Panjang
       jalankanVariasi("", on, off, 1);
     } else if (vNumber == 2) {
       int on[]  = {0, 2, 1, 3};
@@ -275,7 +268,7 @@ void handleControlRelay() {
 // ==================== SETUP ====================
 void setup() {
   Serial.begin(115200);
-  Serial.println("\\n🚀 ESP32 Starting...");
+  Serial.println("\n🚀 ESP32 Starting...");
 
   for (int i = 0; i < 4; i++) {
     pinMode(relayPins[i], OUTPUT);
@@ -288,15 +281,15 @@ void setup() {
   int tries = 0;
   while (WiFi.status() != WL_CONNECTED) {
     delay(500); Serial.print(".");
-    if (++tries > 40) { Serial.println("\\n❌ Gagal! Restart..."); ESP.restart(); }
+    if (++tries > 40) { Serial.println("\n❌ Gagal! Restart..."); ESP.restart(); }
   }
-  Serial.println("\\n✅ WiFi OK — IP: " + WiFi.localIP().toString());
+  Serial.println("\n✅ WiFi OK — IP: " + WiFi.localIP().toString());
 
   client.setCACert(TELEGRAM_CERTIFICATE_ROOT);
 
   // Kirim notifikasi online ke bot Telegram
   bot.sendMessage(CHAT_ID,
-    "🟢 *ESP32 Online!*\\nKetik *menu* untuk daftar perintah Telegram,\\natau akses Web App UI langsung via IP: http://" + WiFi.localIP().toString(), "Markdown");
+    "🟢 *ESP32 Online!*\nKetik *menu* untuk daftar perintah Telegram,\natau akses Web App UI langsung via IP: http://" + WiFi.localIP().toString(), "Markdown");
 
   // Jalankan REST Web Server
   server.on("/", handleRoot);
@@ -320,7 +313,6 @@ void setup() {
 
 // ==================== LOOP ====================
 void loop() {
-  // Selalu tangani klien Web Server agar respon instan
   server.handleClient();
 
   if (variasiBerjalan) return;
@@ -335,85 +327,4 @@ void loop() {
     }
     lastBotCheck = millis();
   }
-}
-*/`;
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(esp32Code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="bg-[#15171C] text-slate-100 rounded-3xl p-6 shadow-xl border border-[#282C34]" id="arduino-code-panel">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="bg-teal-500/10 text-teal-400 p-1.5 rounded-lg border border-teal-500/20">
-              <Cpu className="w-5 h-5" />
-            </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Code Sketch Upgrade ESP32</h2>
-          </div>
-          <p className="text-xs text-slate-400 mt-1 font-mono">Salin kode di bawah, lalu upload ke ESP32 Anda melalui Arduino IDE.</p>
-        </div>
-
-        <button
-          onClick={copyToClipboard}
-          className="flex items-center justify-center gap-2 self-start sm:self-center px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-semibold rounded-xl shadow-md transition-all cursor-pointer"
-        >
-          {copied ? (
-            <>
-              <Check className="w-4 h-4 text-emerald-100 animate-scale" />
-              <span>Tersalin!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-4 h-4" />
-              <span>Salin Kode Arduino</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Warning Box */}
-      <div className="bg-teal-950/40 border border-teal-800/50 p-4 rounded-2xl mb-6 flex gap-3 text-xs leading-relaxed">
-        <Sparkles className="w-6 h-6 text-teal-400 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-bold text-teal-300">Mengapa Kode Ini Sangat Cepat?</span> 
-          {" "}Kami menambahkan webserver port 80 langsung di ESP32 Anda. Saat mengaktifkan <span className="font-bold text-white">Direct IP</span> di dashboard, browser Anda mengirim perintah langsung ke ESP32 di jaringan lokal, memotong perantara cloud, sehingga waktu respon berkurang dari 3-5 detik (via Telegram) menjadi kurang dari <span className="text-teal-300 font-bold">10 milidetik</span>!
-        </div>
-      </div>
-
-      {/* Browser security notice */}
-      <div className="bg-amber-950/40 border border-amber-800/50 p-4 rounded-2xl mb-6 flex gap-3 text-xs leading-relaxed">
-        <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-bold text-amber-300">Penting: Bypass Mixed Content Browser</span> 
-          {" "}Karena halaman demo ini dimuat melalui HTTPS, browser secara default memblokir permintaan HTTP lokal (Direct IP). Agar fitur ini berfungsi, Anda perlu mengaktifkan izin <span className="font-bold text-white">"Insecure Content"</span> di pengaturan situs browser Anda untuk domain ini:
-          <ol className="list-decimal ml-4 mt-1 space-y-1 text-slate-300">
-            <li>Klik ikon gembok / info di samping kolom URL browser Anda.</li>
-            <li>Pilih <span className="font-bold text-white">Site Settings</span> (Pengaturan Situs).</li>
-            <li>Temukan <span className="font-bold text-white">Insecure content</span> (Konten tidak aman) lalu ubah menjadi <span className="font-bold text-white">Allow</span> (Izinkan).</li>
-          </ol>
-        </div>
-      </div>
-
-      {/* Code Window */}
-      <div className="relative rounded-2xl overflow-hidden border border-[#282C34] bg-[#0B0C0E]">
-        <div className="flex justify-between items-center bg-[#15171C] px-4 py-2 text-xxs text-slate-500 border-b border-[#282C34]/50">
-          <span className="font-mono">esp32_relay_dht11_webserver.ino</span>
-          <span className="bg-teal-500/10 text-teal-400 px-1.5 py-0.5 rounded uppercase font-semibold tracking-wide font-mono">C++ / Arduino</span>
-        </div>
-        
-        <div className="max-h-[350px] overflow-y-auto p-4 font-mono text-xs leading-relaxed text-slate-300 select-text pre-scroll">
-          <pre>{esp32Code}</pre>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between text-xxs text-slate-400 font-mono">
-        <span>Library wajib: Adafruit DHT Sensor, ArduinoJson (6.x), UniversalTelegramBot</span>
-        <span>Version 1.2.0</span>
-      </div>
-    </div>
-  );
 }
