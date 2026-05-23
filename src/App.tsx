@@ -231,6 +231,9 @@ export default function App() {
       }
     } catch (err) {
       setPingLatency(null);
+      if (window.location.protocol === 'https:') {
+        setShowInsecureNotice(true);
+      }
       setConnState({
         status: 'disconnected',
         message: `Sambungan diblokir atau timeout. Periksa apakah IP ${inputIp} sudah benar, ESP32 menyala, dan tersambung di Wi-Fi yang sama.`
@@ -631,11 +634,51 @@ export default function App() {
 
         {/* Insecure Content Dynamic Warning */}
         {showInsecureNotice && mode === 'direct' && (
-          <div className="max-w-7xl mx-auto mt-3 bg-rose-950/20 border border-rose-500/20 rounded-2xl p-4 text-rose-300 text-xs flex gap-3 leading-relaxed">
-            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold text-rose-400 font-mono">Sambungan Diblokir oleh Aturan Keamanan Browser (Mixed Content):</span>
-              {" "}Karena Dashboard ini menggunakan HTTPS, browser melarang akses langsung ke HTTP IP lokal ESP32 secara bawaan. Agar kontrol Direct IP berfungsi, silakan aktifkan izin <span className="font-bold underline text-white">Insecure Content</span> di pengaturan situs browser Anda untuk situs ini. Informasi detail langkahnya tersedia di tab <span className="font-bold cursor-pointer underline hover:text-white" onClick={() => setActiveTab('arduino')}>[Upgrade ESP32]</span> di kanan atas.
+          <div className="max-w-7xl mx-auto mt-4 bg-rose-950/35 border border-rose-500/35 rounded-2xl p-5 text-rose-200 text-sm shadow-md" id="mixed-content-warning">
+            <div className="flex gap-3 items-start mb-3">
+              <AlertCircle className="w-6 h-6 text-rose-400 shrink-0" />
+              <div>
+                <h3 className="font-bold text-rose-300 font-mono text-sm uppercase tracking-wide">
+                  Penting: Mengaktifkan Izin "Insecure Content" di Browser Anda
+                </h3>
+                <p className="text-xs text-rose-400 mt-0.5">
+                  Karena Dashboard ini berjalan menggunakan protokol aman (<strong>HTTPS</strong>), browser Anda memblokir pemanggilan API langsung ke IP lokal ESP32 Anda (<strong>HTTP</strong>) karena aturan keamanan <em>Mixed Content</em>.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#0B0C0E]/60 border border-rose-500/10 rounded-xl p-4 mt-1.5 space-y-3 text-xs leading-relaxed">
+              <div className="text-yellow-400/95 font-medium">
+                ⚠️ <strong>Catatan Penting:</strong> Mengaktifkan pilihan <span className="font-bold text-white bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">"Local network"</span> di gelembung Chrome Anda saja <strong>belum cukup</strong> karena pembatasan Mixed Content HTTPS tetap memblokir koneksi HTTP langsung.
+              </div>
+
+              <p className="font-semibold text-white">Silakan ikuti instruksi 4 langkah mudah ini untuk membukanya:</p>
+              
+              <ol className="list-decimal pl-5 space-y-2 text-slate-300 font-mono text-[11px]">
+                <li>
+                  Pada jendela pop-up perizinan browser Anda (seperti di tangkapan layar Anda), klik tombol <span className="text-white font-bold underline">"Site settings"</span> (Pengaturan situs) di bagian paling bawah dengan ikon gerigi ⚙️.
+                </li>
+                <li>
+                  Sebuah tab baru akan terbuka di browser Anda yang menampilkan semua daftar izin khusus untuk domain situs ini.
+                </li>
+                <li>
+                  Gulir ke bawah hingga Anda menemukan bagian <span className="text-white font-bold">"Insecure content"</span> (Konten tidak aman), lalu ubah pilihannya dari <span className="text-rose-400 font-semibold bg-rose-500/10 px-1 py-0.5 rounded border border-rose-500/20">Block (default)</span> menjadi <span className="text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">Allow</span> (Izinkan).
+                </li>
+                <li>
+                  Kembali ke tab Dashboard ini, <strong>muat ulang halaman (Refresh / F5)</strong>, kemudian isi IP ESP32 Anda dan klik tombol <span className="text-emerald-400 font-bold underline cursor-pointer" onClick={() => pingESP32()}>"Hubungkan"</span> kembali.
+                </li>
+              </ol>
+
+              <div className="mt-2 text-[11px] text-slate-400">
+                Langkah detail & salinan kode Arduino pendukung yang optimal dapat Anda lihat di tab{" "}
+                <button 
+                  onClick={() => setActiveTab('arduino')}
+                  className="text-blue-400 hover:text-blue-300 underline font-semibold font-mono cursor-pointer"
+                >
+                  [Upgrade ESP32]
+                </button>{" "}
+                di bagian atas halaman.
+              </div>
             </div>
           </div>
         )}
