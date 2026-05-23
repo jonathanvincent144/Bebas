@@ -3,7 +3,7 @@ import { Mic, MicOff, Volume2, VolumeX, HelpCircle, CornerDownLeft, Play, AlertC
 import { VoiceCommandStatus } from '../types';
 
 interface VoicePanelProps {
-  onExecuteCommand: (command: string) => { success: boolean; feedback: string };
+  onExecuteCommand: (command: string) => Promise<{ success: boolean; feedback: string; latency?: number }>;
   isVariasiRunning: boolean;
 }
 
@@ -17,9 +17,14 @@ export default function VoicePanel({ onExecuteCommand, isVariasiRunning }: Voice
   const [ttsEnabled, setTtsEnabled] = useState<boolean>(true);
   const [isSupported, setIsSupported] = useState<boolean>(true);
   const [manualCommand, setManualCommand] = useState<string>('');
-  const [recentCommands, setRecentCommands] = useState<Array<{ text: string; success: boolean; time: string }>>([]);
+  const [recentCommands, setRecentCommands] = useState<Array<{ text: string; success: boolean; time: string; latency?: string }>>([]);
   
   const recognitionRef = useRef<any>(null);
+  const onExecuteCommandRef = useRef(onExecuteCommand);
+
+  useEffect(() => {
+    onExecuteCommandRef.current = onExecuteCommand;
+  }, [onExecuteCommand]);
 
   useEffect(() => {
     // Check speech recognition support
@@ -125,32 +130,49 @@ export default function VoicePanel({ onExecuteCommand, isVariasiRunning }: Voice
   };
 
   // Match voice input against commands list
-  const handleCommandMatch = (rawText: string) => {
-    // Process string
-    const result = onExecuteCommand(rawText);
-    
-    // Log history
-    const now = new Date();
-    const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
-    setRecentCommands(prev => [
-      { text: rawText, success: result.success, time: timeStr },
-      ...prev.slice(0, 4)
-    ]);
+  const handleCommandMatch = async (rawText: string) => {
+    setStatus(prev => ({
+      ...prev,
+      state: 'speaking',
+      feedbackText: 'Menjalankan perintah...'
+    }));
 
-    if (result.success) {
-      setStatus(prev => ({
-        ...prev,
-        state: 'success',
-        feedbackText: result.feedback
-      }));
-      speakText(result.feedback);
-    } else {
+    try {
+      // Process string with latest ref to avoid stale closures
+      const result = await onExecuteCommandRef.current(rawText);
+      
+      // Log history with time and execution latency
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+      const latencyStr = result.latency !== undefined ? `${result.latency}ms` : 'Simulation';
+      
+      setRecentCommands(prev => [
+        { text: rawText, success: result.success, time: timeStr, latency: latencyStr },
+        ...prev.slice(0, 4)
+      ]);
+
+      if (result.success) {
+        setStatus(prev => ({
+          ...prev,
+          state: 'success',
+          feedbackText: result.feedback
+        }));
+        speakText(result.feedback);
+      } else {
+        setStatus(prev => ({
+          ...prev,
+          state: 'error',
+          feedbackText: result.feedback
+        }));
+        speakText(result.feedback);
+      }
+    } catch (err) {
+      console.error(err);
       setStatus(prev => ({
         ...prev,
         state: 'error',
-        feedbackText: result.feedback
+        feedbackText: 'Error mengeksekusi perintah. Silakan coba lagi.'
       }));
-      speakText(result.feedback);
     }
 
     // Return to idle state after 4 seconds
@@ -365,7 +387,14 @@ export default function VoicePanel({ onExecuteCommand, isVariasiRunning }: Voice
                   )}
                   <span className="font-semibold text-slate-300 truncate font-mono">"{rc.text}"</span>
                 </div>
-                <span className="text-slate-500 font-mono shrink-0">{rc.time}</span>
+                <div className="flex items-center gap-1.5 shrink-0 font-mono text-[10px]">
+                  {rc.latency && (
+                    <span className="text-[9px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1 py-0.5 rounded leading-none">
+                      {rc.latency}
+                    </span>
+                  )}
+                  <span className="text-slate-500">{rc.time}</span>
+                </div>
               </div>
             ))}
           </div>

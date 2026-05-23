@@ -355,22 +355,25 @@ export default function App() {
       setVariasiProgress(0);
     }
   };
-
   // Master command parser from Voice Panel
   // Processes Indonesian words and outputs dynamic TTS responses
-  const executeVoiceCommand = (command: string): { success: boolean; feedback: string } => {
+  const executeVoiceCommand = async (command: string): Promise<{ success: boolean; feedback: string; latency?: number }> => {
+    const startTime = Date.now();
     const text = command.toLowerCase().trim();
     const l1 = relays[0].name.toLowerCase();
     const l2 = relays[1].name.toLowerCase();
     const l3 = relays[2].name.toLowerCase();
     const l4 = relays[3].name.toLowerCase();
 
+    const getResult = (success: boolean, feedback: string) => ({
+      success,
+      feedback,
+      latency: Date.now() - startTime
+    });
+
     // 1. HELP OR MENU CHECK
     if (text === 'menu' || text === 'start' || text === 'bantuan') {
-      return {
-        success: true,
-        feedback: "Halo! Saya bot kontroler ESP32 Anda. Anda dapat mengontrol empat relay dengan perintah suara."
-      };
+      return getResult(true, "Halo! Saya bot kontroler ESP32 Anda. Anda dapat mengontrol empat relay dengan perintah suara.");
     }
 
     // 1. STATUS CHECK
@@ -378,12 +381,9 @@ export default function App() {
       if (text.includes('cek status') || text === 'status' || text.includes('bagaimana status')) {
         const namesOn = relays.filter(r => r.state).map(r => r.name);
         if (namesOn.length === 0) {
-          return { success: true, feedback: "Seluruh relay saat ini dalam kondisi padam atau OFF." };
+          return getResult(true, "Seluruh relay saat ini dalam kondisi padam atau OFF.");
         }
-        return { 
-          success: true, 
-          feedback: `Saat ini terdapat ${namesOn.length} relay menyala, yaitu: ${namesOn.join(', ')}.` 
-        };
+        return getResult(true, `Saat ini terdapat ${namesOn.length} relay menyala, yaitu: ${namesOn.join(', ')}.`);
       }
     }
 
@@ -392,33 +392,30 @@ export default function App() {
       const latestReading = sensorHistory[sensorHistory.length - 1];
       const temp = latestReading ? latestReading.suhu.toFixed(1) : "27";
       const hum = latestReading ? latestReading.kelembapan.toFixed(0) : "65";
-      return {
-        success: true,
-        feedback: `Suhu saat ini terdeteksi ${temp} derajat Celsius dengan kelembapan udara ${hum} persen.`
-      };
+      return getResult(true, `Suhu saat ini terdeteksi ${temp} derajat Celsius dengan kelembapan udara ${hum} persen.`);
     }
 
     // 3. MASTER ALL COMMANDS
     if (text.includes('semua') || text.includes('all')) {
       if (text.includes('nyala') || text.includes('hidup') || text.includes('aktif') || text.includes('on')) {
-        setAllRelaysGlobal(true);
-        return { success: true, feedback: "Baik, semua relay telah diaktifkan secara bersamaan." };
+        await setAllRelaysGlobal(true);
+        return getResult(true, "Baik, semua relay telah diaktifkan secara bersamaan.");
       }
       if (text.includes('mati') || text.includes('padam') || text.includes('non') || text.includes('off')) {
-        setAllRelaysGlobal(false);
-        return { success: true, feedback: "Perintah diterima, seluruh sistem relay dinonaktifkan." };
+        await setAllRelaysGlobal(false);
+        return getResult(true, "Perintah diterima, seluruh sistem relay dinonaktifkan.");
       }
     }
 
     // 4. VARIATION CHECKS
     if (text.includes('variasi')) {
       if (text.includes('satu') || text.includes('1') || text.includes('v1')) {
-        triggerVariasi(1);
-        return { success: true, feedback: "Memulai program siklus variasi satu pada ESP32." };
+        await triggerVariasi(1);
+        return getResult(true, "Memulai program siklus variasi satu pada ESP32.");
       }
       if (text.includes('dua') || text.includes('2') || text.includes('v2')) {
-        triggerVariasi(2);
-        return { success: true, feedback: "Memulai program ritem variasi dua pada ESP32." };
+        await triggerVariasi(2);
+        return getResult(true, "Memulai program ritem variasi dua pada ESP32.");
       }
     }
 
@@ -426,64 +423,61 @@ export default function App() {
     // Relay 1 Check
     if (text.includes('r1') || text.includes('relay 1') || text.includes('relay satu') || text.includes(l1)) {
       if (text.includes('nyala') || text.includes('hidup') || text.includes('on') || text.includes('aktif')) {
-        if (relays[0].state) return { success: true, feedback: `${relays[0].name} sudah dalam keadaan hidup.` };
-        toggleRelay(0);
-        return { success: true, feedback: `Baik, menghidupkan ${relays[0].name}.` };
+        if (relays[0].state) return getResult(true, `${relays[0].name} sudah dalam keadaan hidup.`);
+        await toggleRelay(0);
+        return getResult(true, `Baik, menghidupkan ${relays[0].name}.`);
       }
       if (text.includes('mati') || text.includes('padam') || text.includes('off') || text.includes('non')) {
-        if (!relays[0].state) return { success: true, feedback: `${relays[0].name} memang sudah mati.` };
-        toggleRelay(0);
-        return { success: true, feedback: `Siap, memadamkan ${relays[0].name}.` };
+        if (!relays[0].state) return getResult(true, `${relays[0].name} memang sudah mati.`);
+        await toggleRelay(0);
+        return getResult(true, `Siap, memadamkan ${relays[0].name}.`);
       }
     }
 
     // Relay 2 Check
     if (text.includes('r2') || text.includes('relay 2') || text.includes('relay dua') || text.includes(l2)) {
       if (text.includes('nyala') || text.includes('hidup') || text.includes('on') || text.includes('aktif')) {
-        if (relays[1].state) return { success: true, feedback: `${relays[1].name} sudah dalam keadaan hidup.` };
-        toggleRelay(1);
-        return { success: true, feedback: `Baik, menyalakan ${relays[1].name}.` };
+        if (relays[1].state) return getResult(true, `${relays[1].name} sudah dalam keadaan hidup.`);
+        await toggleRelay(1);
+        return getResult(true, `Baik, menyalakan ${relays[1].name}.`);
       }
       if (text.includes('mati') || text.includes('padam') || text.includes('off') || text.includes('non')) {
-        if (!relays[1].state) return { success: true, feedback: `${relays[1].name} memang sudah mati.` };
-        toggleRelay(1);
-        return { success: true, feedback: `Siap, menonaktifkan ${relays[1].name}.` };
+        if (!relays[1].state) return getResult(true, `${relays[1].name} memang sudah mati.`);
+        await toggleRelay(1);
+        return getResult(true, `Siap, menonaktifkan ${relays[1].name}.`);
       }
     }
 
     // Relay 3 Check
     if (text.includes('r3') || text.includes('relay 3') || text.includes('relay tiga') || text.includes(l3)) {
       if (text.includes('nyala') || text.includes('hidup') || text.includes('on') || text.includes('aktif')) {
-        if (relays[2].state) return { success: true, feedback: `${relays[2].name} sudah aktif` };
-        toggleRelay(2);
-        return { success: true, feedback: `Membuka saklar ${relays[2].name}.` };
+        if (relays[2].state) return getResult(true, `${relays[2].name} sudah aktif.`);
+        await toggleRelay(2);
+        return getResult(true, `Membuka saklar ${relays[2].name}.`);
       }
       if (text.includes('mati') || text.includes('padam') || text.includes('off') || text.includes('non')) {
-        if (!relays[2].state) return { success: true, feedback: `${relays[2].name} sudah padam.` };
-        toggleRelay(2);
-        return { success: true, feedback: `Mematikan saluran ${relays[2].name}.` };
+        if (!relays[2].state) return getResult(true, `${relays[2].name} sudah padam.`);
+        await toggleRelay(2);
+        return getResult(true, `Mematikan saluran ${relays[2].name}.`);
       }
     }
 
     // Relay 4 Check
     if (text.includes('r4') || text.includes('relay 4') || text.includes('relay empat') || text.includes(l4)) {
       if (text.includes('nyala') || text.includes('hidup') || text.includes('on') || text.includes('aktif')) {
-        if (relays[3].state) return { success: true, feedback: `${relays[3].name} sudah menyala.` };
-        toggleRelay(3);
-        return { success: true, feedback: `Menghidupkan listrik ${relays[3].name}.` };
+        if (relays[3].state) return getResult(true, `${relays[3].name} sudah menyala.`);
+        await toggleRelay(3);
+        return getResult(true, `Menghidupkan listrik ${relays[3].name}.`);
       }
       if (text.includes('mati') || text.includes('padam') || text.includes('off') || text.includes('non')) {
-        if (!relays[3].state) return { success: true, feedback: `${relays[3].name} sudah padam.` };
-        toggleRelay(3);
-        return { success: true, feedback: `Mematikan daya listrik ${relays[3].name}.` };
+        if (!relays[3].state) return getResult(true, `${relays[3].name} sudah padam.`);
+        await toggleRelay(3);
+        return getResult(true, `Mematikan daya listrik ${relays[3].name}.`);
       }
     }
 
     // FALLBACK
-    return {
-      success: false,
-      feedback: "Perintah suara terdeteksi namun tidak cocok. Coba katakan: 'Nyalakan Lampu Kamar' atau 'Matikan Semua'."
-    };
+    return getResult(false, "Perintah suara terdeteksi namun tidak cocok. Coba katakan: 'Nyalakan Lampu Kamar' atau 'Matikan Semua'.");
   };
 
   const clearGraphHistory = () => {
@@ -678,6 +672,102 @@ export default function App() {
                   [Upgrade ESP32]
                 </button>{" "}
                 di bagian atas halaman.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Global Connection Diagnostic Panel */}
+        {mode === 'direct' && connState.status !== 'connected' && (
+          <div className="max-w-7xl mx-auto mt-4 bg-[#15171C]/90 border border-amber-500/30 rounded-2xl p-5 shadow-xl text-slate-300 animate-fade-in" id="diagnostic-checklist-panel">
+            <div className="flex gap-3 items-start mb-4">
+              <div className="p-2 bg-amber-500/15 text-amber-400 rounded-xl border border-amber-500/20 shrink-0">
+                <Info className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white font-mono text-sm uppercase tracking-wide">
+                  📋 DIAGNOSIS MASALAH KONEKSI ESP32
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Meskipun Anda sudah menggunakan link non-HTTPS (Not Secure), browser Anda tetap tidak dapat melakukan ping ke IP <strong className="text-amber-400 font-mono">{inputIp}</strong>. Periksa 4 penyebab utama berikut:
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs mt-3">
+              {/* Item 1 */}
+              <div className="bg-[#0B0C0E]/60 border border-[#282C34] rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider block mb-1">
+                    1. Apakah Alamat IP Anda Benar?
+                  </span>
+                  <p className="text-slate-400 text-xxs leading-relaxed">
+                    Alamat IP ESP32 diberikan secara otomatis oleh router Anda (DHCP) sehingga <strong>bisa berubah setiap kali ESP32 dinyalakan ulang</strong>.
+                  </p>
+                </div>
+                <div className="mt-2.5 p-2 bg-[#15171C] rounded-lg border border-[#282C34] text-[10px] text-slate-400 font-mono">
+                  💡 <strong>Cara Verifikasi:</strong> Hubungkan ESP32 ke laptop, buka <strong>Serial Monitor</strong> di Arduino IDE (Baudrate: <strong>115200</strong>), lalu tekan tombol <strong>EN/Rout/Reset</strong> di ESP32 Anda untuk melihat IP yang tercetak.
+                </div>
+              </div>
+
+              {/* Item 2 */}
+              <div className="bg-[#0B0C0E]/60 border border-[#282C34] rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider block mb-1">
+                    2. Hambatan Isolasi Router WiFi Umum (IP 10.x.x.x)
+                  </span>
+                  <p className="text-slate-400 text-xxs leading-relaxed">
+                    Jika IP ESP32 Anda berada di rentang <strong className="text-rose-400 font-mono">{inputIp}</strong> (seperti <strong className="text-rose-400 font-mono">10.x.x.x</strong>), ini adalah khas jaringan Wi-Fi kosan, sekolah, kampus, atau kantor. Jaringan ini memiliki fitur keamanan <strong>"Client Isolation"</strong> yang memblokir semua komunikasi langsung antar-perangkat.
+                  </p>
+                </div>
+                <div className="mt-2.5 p-2 bg-amber-500/5 rounded-lg border border-amber-500/10 text-[10px] text-yellow-400/90 font-mono leading-relaxed">
+                  🔥 <strong>Solusi Terbaik:</strong> Aktifkan <strong>Hotspot Seluler/Tethering</strong> di HP Anda. Ganti SSID & Password Wi-Fi pada sketch Arduino ke Hotspot tersebut, lalu sambungkan laptop dan ESP32 ke Hotspot HP Anda yang sama.
+                </div>
+              </div>
+
+              {/* Item 3 */}
+              <div className="bg-[#0B0C0E]/60 border border-[#282C34] rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider block mb-1">
+                    3. Apakah Kode Web Server Sudah Terpasang di ESP32?
+                  </span>
+                  <p className="text-slate-400 text-xxs leading-relaxed">
+                    Kode lama Anda hanya melayani bot Telegram. Agar Dashboard ini bisa mengontrol relay secara instan, ESP32 harus melayani permintaan API lokal.
+                  </p>
+                </div>
+                <div className="mt-2.5">
+                  <button
+                    onClick={() => setActiveTab('arduino')}
+                    className="w-full text-center text-xxs bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 py-1.5 rounded-lg transition-all font-semibold font-mono"
+                  >
+                    👉 Salin & Upload Sketch Terbaru Di Sini
+                  </button>
+                </div>
+              </div>
+
+              {/* Item 4 */}
+              <div className="bg-[#0B0C0E]/60 border border-[#282C34] rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider block mb-1">
+                    4. Uji Ping API Langsung dari Browser Anda
+                  </span>
+                  <p className="text-slate-400 text-xxs leading-relaxed opacity-95">
+                    Mari kita cek apakah browser Anda bisa menjangkau server ESP32 secara langsung di luar aplikasi ini.
+                  </p>
+                </div>
+                <div className="mt-2.5 flex flex-col gap-2">
+                  <a
+                    href={`http://${inputIp}/api/status`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-center text-xxs bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 border border-emerald-500/20 py-1.5 rounded-lg transition-all font-mono font-bold"
+                  >
+                    🔗 Buka Tab Baru: http://{inputIp}/api/status
+                  </a>
+                  <p className="text-[10px] text-slate-500 font-mono leading-none text-center">
+                    (Jika muncul error "Site can't be reached", berarti Wi-Fi tidak sama atau diblokir isolasi)
+                  </p>
+                </div>
               </div>
             </div>
           </div>
